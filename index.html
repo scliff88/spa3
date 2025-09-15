@@ -38,12 +38,7 @@
       padding:18px; border-radius:10px; margin:6px 0 14px;
     }
     .property-info{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin-top:10px}
-    .pill{
-      display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px; font-weight:600;
-      background:linear-gradient(135deg,#4facfe 0%, #00f2fe 100%); color:#fff; margin:18px 0;
-    }
     .backstop{background:#fff7e6; border-left:5px solid #ffbf47; padding:14px; border-radius:8px; color:#7a5400; margin:14px 0}
-    .grid2{display:grid; grid-template-columns:1.1fr .9fr; gap:16px}
     .sub-options{background:var(--soft); border:1px dashed #dbeafe; padding:14px; border-radius:10px; margin-top:10px}
     .inline{display:flex; align-items:center; gap:8px}
     input[type="checkbox"], input[type="radio"]{transform:scale(1.2); margin-right:6px}
@@ -97,16 +92,9 @@
     <div id="installArea" class="section hidden">
       <h2 class="section-header">Installation Details</h2>
 
-      <div class="grid2">
-        <div>
-          <label for="approvedAC">Current System Size (kW)</label>
-          <input id="approvedAC" type="text" disabled style="background:#f3f4f6"/>
-          <p class="help-text">Current approved AC capacity on record.</p>
-        </div>
-        <div class="">
-          <div class="pill">Total Approved Capacity: <span id="totalCapacity">0.0</span> kW</div>
-        </div>
-      </div>
+      <label for="approvedAC">Current System Size (kW)</label>
+      <input id="approvedAC" type="text" disabled style="background:#f3f4f6"/>
+      <p class="help-text">Current approved AC capacity on record.</p>
 
       <div class="backstop">
         <strong>Victoria’s Emergency Backstop</strong><br>
@@ -183,8 +171,6 @@
           <div class="inline"><input type="radio" name="evLoadRep" value="no">No</div>
           <div id="evRepCro" class="cro hidden">Contact Customer Requests: 1800 771 434 or cru@powercor.com.au</div>
         </div>
-
-        <p class="note">EV chargers are site load, not generation. They don’t change Approved Capacity.</p>
       </div>
 
       <div class="inline" style="margin-top:8px"><input id="chkExportOnly" type="checkbox"><span>Export increase only</span></div>
@@ -355,8 +341,7 @@
     function calcAndRender(){
       proposedAC = calcApprovedCapacity();
 
-      // Cap guidance text
-      byId('totalCapacity').textContent  = proposedAC.toFixed(1);
+      // Cap guidance text (single display at bottom)
       byId('totalCapacity2').textContent = proposedAC.toFixed(1);
       byId('exportUpTo').textContent = `You can request up to ${proposedAC.toFixed(1)} kW, and no more than your connection’s export limit.`;
 
