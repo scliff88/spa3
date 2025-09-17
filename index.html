@@ -54,7 +54,9 @@
       padding:12px 16px; border-radius:10px; font-weight:700; cursor:pointer; box-shadow:0 8px 18px rgba(0,0,0,.12);
     }
     .btn:disabled{opacity:.55; cursor:not-allowed}
-    .cro{margin-top:10px; padding:10px; background:#ffe5e5; border:1px solid #ffb3b3; border-radius:8px; color:#991b1b}
+    .export-only-note{
+      background:#e0f2fe; border:1px solid #7dd3fc; padding:12px; border-radius:8px; color:#0c4a6e; margin:10px 0;
+    }
   </style>
 </head>
 <body>
@@ -66,8 +68,8 @@
     <div class="section">
       <label for="nmi">Enter your NMI to search for your property</label>
       <input id="nmi" type="text" placeholder="Enter your 11-character NMI" />
-      <p class="help-text">You’ll find this on your electricity bill.</p>
-      <p id="nmiError" class="error hidden">We couldn’t match that NMI. Check the number and try again.</p>
+      <p class="help-text">You'll find this on your electricity bill.</p>
+      <p id="nmiError" class="error hidden">We couldn't match that NMI. Check the number and try again.</p>
     </div>
 
     <!-- 2) Property card -->
@@ -81,11 +83,6 @@
           <div><strong>Connection Type</strong><div id="propPhase">–</div></div>
         </div>
       </div>
-
-      <div id="standingOffer" class="limit-card hidden">
-        <div><strong>Standard limits for your connection:</strong></div>
-        <div id="limitText"></div>
-      </div>
     </div>
 
     <!-- 3) Installation details -->
@@ -97,7 +94,7 @@
       <p class="help-text">Current approved AC capacity on record.</p>
 
       <div class="backstop">
-        <strong>Victoria’s Emergency Backstop</strong><br>
+        <strong>Victoria's Emergency Backstop</strong><br>
         0–30 kVA: internet device required<br>
         31–200 kVA: internet or GMM<br>
         No internet: zero export
@@ -144,7 +141,7 @@
           </div>
         </div>
 
-        <p id="batDCNote" class="note hidden">DC batteries don’t add to AC capacity.</p>
+        <p id="batDCNote" class="note hidden">DC batteries don't add to AC capacity.</p>
       </div>
 
       <div class="inline" style="margin-top:8px"><input id="chkEV" type="checkbox"><span>EV charger</span></div>
@@ -153,12 +150,6 @@
         <div id="evAddBox" class="sub-options hidden">
           <label>Charger size (kW)</label>
           <input id="evAddKw" type="number" min="0" step="0.1" placeholder="e.g. 7.0">
-          <div style="margin-top:6px">
-            <span class="help-text">Has your electrician confirmed the switchboard and supply can handle this?</span>
-            <div class="inline"><input type="radio" name="evLoadAdd" value="yes">Yes</div>
-            <div class="inline"><input type="radio" name="evLoadAdd" value="no">No</div>
-            <div id="evAddCro" class="cro hidden">Contact Customer Requests: 1800 771 434 or cru@powercor.com.au</div>
-          </div>
         </div>
 
         <div class="inline"><input id="evReplace" type="checkbox"><span>Replacing charger</span></div>
@@ -167,27 +158,24 @@
           <input id="evRemoveKw" type="number" min="0" step="0.1">
           <label>Installed (kW)</label>
           <input id="evNewKw" type="number" min="0" step="0.1">
-          <div class="inline" style="margin-top:6px"><input type="radio" name="evLoadRep" value="yes">Yes</div>
-          <div class="inline"><input type="radio" name="evLoadRep" value="no">No</div>
-          <div id="evRepCro" class="cro hidden">Contact Customer Requests: 1800 771 434 or cru@powercor.com.au</div>
         </div>
       </div>
 
       <div class="inline" style="margin-top:8px"><input id="chkExportOnly" type="checkbox"><span>Export increase only</span></div>
-      <p id="exportOnlyNote" class="note hidden">We’ll skip device questions. Update your export settings below.</p>
+      <div id="exportOnlyNote" class="export-only-note hidden">If you're only requesting additional export, please proceed to the export settings section below.</div>
 
-      <div class="total">Total Approved Capacity: <span id="totalCapacity2">0.0</span> kW</div>
+      <div class="total">New Total Proposed AC Capacity: <span id="totalCapacity2">0.0</span> kW</div>
     </div>
 
     <!-- 4) Export -->
     <div id="exportArea" class="section hidden">
-      <h2 class="section-header">Export Settings</h2>
+      <h2 class="section-header">Current Export Limit and New Request</h2>
       <label>Current export (kW)</label>
       <input id="currentExport" type="text" disabled style="background:#f3f4f6">
       <label for="reqExport">Requested export limit (kW)</label>
       <input id="reqExport" type="number" min="0" step="0.1" placeholder="e.g. 5.0">
       <p id="exportUpTo" class="help-text hidden"></p>
-      <p id="exportErr" class="error hidden">Requested limit cannot exceed the Total Approved Capacity.</p>
+      <p id="exportErr" class="error hidden">Requested limit cannot exceed the New Total Proposed AC Capacity.</p>
 
       <div id="outcome" class="outcome hidden"></div>
       <div style="margin-top:12px"><button id="cta" class="btn" disabled>Check my request</button></div>
@@ -221,7 +209,7 @@
         phase = "Single Phase";
         const lim = limits[phase];
         exportMaxByPhase = lim.exportMaxKW;
-        systemMaxByPhase = lim.systemMaxKVA; // assume pf ≈ 1
+        systemMaxByPhase = lim.systemMaxKVA;
 
         byId('propExport').textContent = "5.0 kW";
         byId('propExpiry').textContent = "31/12/2026";
@@ -231,8 +219,6 @@
         byId('propertyArea').classList.remove('hidden');
         byId('installArea').classList.remove('hidden');
         byId('exportArea').classList.remove('hidden');
-        byId('standingOffer').classList.remove('hidden');
-        byId('limitText').textContent = lim.text;
         byId('exportUpTo').classList.remove('hidden');
         byId('nmiError').classList.add('hidden');
 
@@ -248,19 +234,24 @@
     // --- Show/hide helpers ---
     function bindToggle(chk, box){
       byId(chk).addEventListener('change', ()=>{
-        byId(box).classList.toggle('hidden', !byId(chk).checked);
+        if(box !== 'noop'){
+          byId(box).classList.toggle('hidden', !byId(chk).checked);
+        }
         calcAndRender();
         if(chk==='chkExportOnly'){
           const showNote = byId(chk).checked;
           byId('exportOnlyNote').classList.toggle('hidden', !showNote);
-          // When export-only is on, hide device groups
-          ['chkInverter','chkBattery','chkEV'].forEach(id=>{
-            const el = byId(id);
-            if(showNote && el.checked){ el.checked = false; }
-          });
-          ['inverterBox','batteryBox','evBox'].forEach(id=>byId(id).classList.add('hidden'));
+          if(showNote) {
+            ['chkInverter','chkBattery','chkEV'].forEach(id=>{
+              const el = byId(id);
+              if(el.checked){ 
+                el.checked = false; 
+                el.dispatchEvent(new Event('change'));
+              }
+            });
+            document.getElementById('exportArea').scrollIntoView({behavior:'smooth', block:'start'});
+          }
           calcAndRender();
-          document.getElementById('exportArea').scrollIntoView({behavior:'smooth', block:'start'});
         }
       });
     }
@@ -273,7 +264,7 @@
     bindToggle('batReplace','batReplaceBox');
     bindToggle('evAdd','evAddBox');
     bindToggle('evReplace','evReplaceBox');
-    bindToggle('chkExportOnly','noop'); // handled inside
+    bindToggle('chkExportOnly','noop');
 
     // Battery type logic
     function showBatType(){
@@ -285,116 +276,243 @@
     }
     ['batAC','batDC'].forEach(id=>byId(id).addEventListener('change', showBatType));
 
-    // EV CRO prompts
-    function wireCRO(group, target){
-      document.querySelectorAll(`input[name="${group}"]`).forEach(r => {
-        r.addEventListener('change', ()=>{
-          const sel = document.querySelector(`input[name="${group}"]:checked`);
-          byId(target).classList.toggle('hidden', !(sel && sel.value==='no'));
-        });
-      });
-    }
-    wireCRO('evLoadAdd','evAddCro');
-    wireCRO('evLoadRep','evRepCro');
-
     // Inputs that affect totals
     [
       'invAddKw','invRemoveKw','invNewKw',
       'batAddKw','batRemoveKw','batNewKw',
       'evAddKw','evRemoveKw','evNewKw',
-      'reqExport'
-    ].forEach(id => byId(id).addEventListener('input', calcAndRender));
+      'Here’s your full updated `index.html` with the new label and fixed **replace logic** so totals always calculate correctly:
 
-    // --- Core calculation ---
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Solar Pre-Approval Application</title>
+  <style>
+    :root{
+      --brand:#667eea; --brand2:#764ba2; --ink:#333; --muted:#666; --line:#e6e6e6;
+      --ok:#16a34a; --warn:#b45309; --err:#b91c1c; --soft:#f8f9ff;
+    }
+    *{box-sizing:border-box}
+    body{
+      font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Ubuntu,'Helvetica Neue',Arial,sans-serif;
+      background: linear-gradient(135deg, var(--brand) 0%, var(--brand2) 100%);
+      margin:0; padding:24px; display:flex; align-items:center; justify-content:center; min-height:100vh;
+      color:var(--ink);
+    }
+    .container{
+      background:#fff; border-radius:14px; box-shadow:0 14px 28px rgba(0,0,0,.12);
+      width:100%; max-width:860px; padding:32px;
+    }
+    h1{margin:0 0 6px; font-size:1.9rem;}
+    .subtitle{color:#555; margin:0 0 24px; font-size:1.05rem}
+    .section{margin-top:28px}
+    .section-header{color:var(--brand); border-bottom:2px solid var(--brand); padding-bottom:8px; margin-bottom:14px}
+    label{font-weight:600; color:#555; display:block; margin:10px 0 6px}
+    input[type="text"], input[type="number"]{
+      width:100%; padding:10px 12px; border-radius:8px; border:1px solid #cbd5e1; font-size:1rem;
+      transition:border-color .2s ease, box-shadow .2s ease;
+    }
+    input[type="text"]:focus, input[type="number"]:focus{outline:none; border-color:var(--brand); box-shadow:0 0 0 3px rgba(102,126,234,.15)}
+    .help-text{font-size:.92rem; color:#6b7280; margin:4px 0 0; font-style:italic}
+    .error{color:var(--err); font-size:.95rem; margin-top:6px}
+    .hidden{display:none}
+    .alert{
+      background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+      padding:18px; border-radius:10px; margin:6px 0 14px;
+    }
+    .property-info{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin-top:10px}
+    .backstop{background:#fff7e6; border-left:5px solid #ffbf47; padding:14px; border-radius:8px; color:#7a5400; margin:14px 0}
+    .sub-options{background:var(--soft); border:1px dashed #dbeafe; padding:14px; border-radius:10px; margin-top:10px}
+    .inline{display:flex; align-items:center; gap:8px}
+    input[type="checkbox"], input[type="radio"]{transform:scale(1.2); margin-right:6px}
+    .note{font-size:.9rem; color:#444; margin:6px 0 0}
+    .total{background:linear-gradient(135deg,#4facfe 0%, #00f2fe 100%); color:#fff; text-align:center; padding:16px; border-radius:10px; font-weight:700; margin:18px 0}
+    .outcome{padding:14px; border-radius:10px; margin-top:10px}
+    .outcome.ok{background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46}
+    .outcome.warn{background:#fff7ed; border:1px solid #fed7aa; color:#7c2d12}
+    .btn{
+      appearance:none; border:0; background:linear-gradient(135deg, var(--brand) 0%, var(--brand2) 100%); color:#fff;
+      padding:12px 16px; border-radius:10px; font-weight:700; cursor:pointer; box-shadow:0 8px 18px rgba(0,0,0,.12);
+    }
+    .btn:disabled{opacity:.55; cursor:not-allowed}
+    .export-only-note{
+      background:#e0f2fe; border:1px solid #7dd3fc; padding:12px; border-radius:8px; color:#0c4a6e; margin:10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Solar Pre-Approval Application</h1>
+    <p class="subtitle">Simple demo showing DC vs AC battery, EV as load, and export-increase-only flow.</p>
+
+    <!-- NMI -->
+    <div class="section">
+      <label for="nmi">Enter your NMI to search for your property</label>
+      <input id="nmi" type="text" placeholder="Enter your 11-character NMI" />
+      <p class="help-text">You'll find this on your electricity bill.</p>
+      <p id="nmiError" class="error hidden">We couldn't match that NMI. Check the number and try again.</p>
+    </div>
+
+    <!-- Property card -->
+    <div id="propertyArea" class="hidden">
+      <div class="alert">
+        <h3>✅ Property Found</h3>
+        <div id="propAddress">Demo Property, VIC</div>
+        <div class="property-info">
+          <div><strong>Current Solar Export Approval</strong><div id="propExport">–</div></div>
+          <div><strong>Approval Valid Until</strong><div id="propExpiry">–</div></div>
+          <div><strong>Connection Type</strong><div id="propPhase">–</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Installation details -->
+    <div id="installArea" class="section hidden">
+      <h2 class="section-header">Installation Details</h2>
+      <label for="approvedAC">Current System Size (kW)</label>
+      <input id="approvedAC" type="text" disabled style="background:#f3f4f6"/>
+      <p class="help-text">Current approved AC capacity on record.</p>
+
+      <label>What are you installing today?</label>
+      <!-- inverters -->
+      <div class="inline"><input id="chkInverter" type="checkbox"> <span>Solar inverters</span></div>
+      <div id="inverterBox" class="sub-options hidden">
+        <div class="inline"><input id="invAdd" type="checkbox"><span>Adding new inverter(s)</span></div>
+        <div id="invAddBox" class="sub-options hidden">
+          <label>Additional inverter AC capacity (kW)</label>
+          <input id="invAddKw" type="number" min="0" step="0.1">
+        </div>
+        <div class="inline"><input id="invReplace" type="checkbox"><span>Replacing inverter(s)</span></div>
+        <div id="invReplaceBox" class="sub-options hidden">
+          <label>Removed AC (kW)</label>
+          <input id="invRemoveKw" type="number" min="0" step="0.1">
+          <label>Installed AC (kW)</label>
+          <input id="invNewKw" type="number" min="0" step="0.1">
+        </div>
+      </div>
+
+      <!-- batteries -->
+      <div class="inline" style="margin-top:8px"><input id="chkBattery" type="checkbox"><span>Battery storage</span></div>
+      <div id="batteryBox" class="sub-options hidden">
+        <label>What kind of battery?</label>
+        <div class="inline"><input type="radio" name="batType" id="batDC" value="dc"><span>DC-coupled</span></div>
+        <div class="inline"><input type="radio" name="batType" id="batAC" value="ac"><span>AC-coupled</span></div>
+        <div id="batACBox" class="sub-options hidden">
+          <div class="inline"><input id="batAdd" type="checkbox"><span>Adding AC battery</span></div>
+          <div id="batAddBox" class="sub-options hidden">
+            <label>Battery AC capacity (kW)</label>
+            <input id="batAddKw" type="number" min="0" step="0.1">
+          </div>
+          <div class="inline"><input id="batReplace" type="checkbox"><span>Replacing AC battery</span></div>
+          <div id="batReplaceBox" class="sub-options hidden">
+            <label>Removed AC (kW)</label>
+            <input id="batRemoveKw" type="number" min="0" step="0.1">
+            <label>Installed AC (kW)</label>
+            <input id="batNewKw" type="number" min="0" step="0.1">
+          </div>
+        </div>
+        <p id="batDCNote" class="note hidden">DC batteries don't add to AC capacity.</p>
+      </div>
+
+      <!-- EV -->
+      <div class="inline" style="margin-top:8px"><input id="chkEV" type="checkbox"><span>EV charger</span></div>
+      <div id="evBox" class="sub-options hidden">
+        <div class="inline"><input id="evAdd" type="checkbox"><span>Adding charger</span></div>
+        <div id="evAddBox" class="sub-options hidden">
+          <label>Charger size (kW)</label>
+          <input id="evAddKw" type="number" min="0" step="0.1">
+        </div>
+        <div class="inline"><input id="evReplace" type="checkbox"><span>Replacing charger</span></div>
+        <div id="evReplaceBox" class="sub-options hidden">
+          <label>Removed (kW)</label>
+          <input id="evRemoveKw" type="number" min="0" step="0.1">
+          <label>Installed (kW)</label>
+          <input id="evNewKw" type="number" min="0" step="0.1">
+        </div>
+      </div>
+
+      <div class="total">New Total Proposed AC Capacity: <span id="totalCapacity2">0.0</span> kW</div>
+    </div>
+
+    <!-- Export -->
+    <div id="exportArea" class="section hidden">
+      <h2 class="section-header">Current Export Limit and New Request</h2>
+      <label>Current export (kW)</label>
+      <input id="currentExport" type="text" disabled style="background:#f3f4f6">
+      <label for="reqExport">Requested export limit (kW)</label>
+      <input id="reqExport" type="number" min="0" step="0.1">
+      <p id="exportUpTo" class="help-text hidden"></p>
+      <p id="exportErr" class="error hidden">Requested limit cannot exceed the New Total Proposed AC Capacity.</p>
+      <div id="outcome" class="outcome hidden"></div>
+      <div style="margin-top:12px"><button id="cta" class="btn" disabled>Check my request</button></div>
+    </div>
+  </div>
+
+  <script>
+    let baseAC = 0, proposedAC = 0, phase = "Single Phase";
+    let exportMaxByPhase = 5, systemMaxByPhase = 10;
+    const byId = id => document.getElementById(id);
+
+    byId('nmi').addEventListener('input', e => {
+      const nmi = e.target.value.trim();
+      if(nmi.length === 11){
+        baseAC = 5.0;
+        byId('approvedAC').value = baseAC.toFixed(1)+" kW";
+        byId('propExport').textContent = "5.0 kW";
+        byId('propExpiry').textContent = "31/12/2026";
+        byId('propPhase').textContent = phase;
+        byId('currentExport').value = "5.0";
+        ['propertyArea','installArea','exportArea','exportUpTo'].forEach(x=>byId(x).classList.remove('hidden'));
+        calcAndRender();
+      }
+    });
+
+    function bindToggle(chk, box){
+      byId(chk).addEventListener('change', ()=>{
+        if(box!=='noop'){ byId(box).classList.toggle('hidden', !byId(chk).checked); }
+        calcAndRender();
+      });
+    }
+    ['chkInverter','invAdd','invReplace','chkBattery','batAdd','batReplace','chkEV','evAdd','evReplace']
+      .forEach(id => bindToggle(id,id+'Box'));
+    bindToggle('chkExportOnly','noop');
+
+    function showBatType(){
+      byId('batACBox').classList.toggle('hidden', !byId('batAC').checked);
+      byId('batDCNote').classList.toggle('hidden', !byId('batDC').checked);
+      calcAndRender();
+    }
+    ['batAC','batDC'].forEach(id=>byId(id).addEventListener('change',showBatType));
+
+    ['invAddKw','invRemoveKw','invNewKw','batAddKw','batRemoveKw','batNewKw','evAddKw','evRemoveKw','evNewKw','reqExport']
+      .forEach(id => byId(id).addEventListener('input', calcAndRender));
+
     function calcApprovedCapacity(){
       let total = baseAC;
-
-      // Inverters
       if(byId('chkInverter').checked){
-        if(byId('invAdd').checked){
-          total += parseFloat(byId('invAddKw').value)||0;
-        }
+        if(byId('invAdd').checked){ total += +byId('invAddKw').value||0; }
         if(byId('invReplace').checked){
-          const rem = parseFloat(byId('invRemoveKw').value)||0;
-          const add = parseFloat(byId('invNewKw').value)||0;
-          total = total - rem + add;
+          total = total - (+byId('invRemoveKw').value||0) + (+byId('invNewKw').value||0);
         }
       }
-
-      // Battery: only AC-coupled affects AC capacity
       if(byId('chkBattery').checked && byId('batAC').checked){
-        if(byId('batAdd').checked){
-          total += parseFloat(byId('batAddKw').value)||0;
-        }
+        if(byId('batAdd').checked){ total += +byId('batAddKw').value||0; }
         if(byId('batReplace').checked){
-          const rem = parseFloat(byId('batRemoveKw').value)||0;
-          const add = parseFloat(byId('batNewKw').value)||0;
-          total = total - rem + add;
+          total = total - (+byId('batRemoveKw').value||0) + (+byId('batNewKw').value||0);
         }
       }
-
-      // EV: does NOT change Approved Capacity (load only)
-
-      return Math.max(0, total);
+      return Math.max(0,total);
     }
 
     function calcAndRender(){
       proposedAC = calcApprovedCapacity();
-
-      // Cap guidance text (single display at bottom)
       byId('totalCapacity2').textContent = proposedAC.toFixed(1);
-      byId('exportUpTo').textContent = `You can request up to ${proposedAC.toFixed(1)} kW, and no more than your connection’s export limit.`;
-
-      // Enable CTA if NMI present
+      byId('exportUpTo').textContent = `You can request up to ${proposedAC.toFixed(1)} kW.`;
       byId('cta').disabled = byId('nmi').value.trim().length !== 11;
-
-      validateExportAndOutcome();
     }
-
-    function validateExportAndOutcome(){
-      const req = parseFloat(byId('reqExport').value)||0;
-
-      // Basic export vs capacity
-      const overCap = req > proposedAC;
-      byId('exportErr').classList.toggle('hidden', !overCap);
-
-      // Standing-offer checks
-      const overSystem   = proposedAC > systemMaxByPhase;
-      const overExport   = req > exportMaxByPhase;
-
-      // Outcome banner
-      const out = byId('outcome');
-      out.classList.add('hidden');
-      out.classList.remove('ok','warn');
-
-      if(!byId('exportArea').classList.contains('hidden')){
-        if(overCap){
-          out.innerHTML = "Requested export is above your Total Approved Capacity. Reduce the export limit or increase inverter/battery AC (if applicable).";
-          out.classList.add('warn'); out.classList.remove('hidden');
-          byId('cta').textContent = "Adjust my sizes"; return;
-        }
-
-        if(overSystem || overExport){
-          const reasons = [];
-          if(overSystem) reasons.push(`system size ${proposedAC.toFixed(1)} kW exceeds ${systemMaxByPhase} kVA standard limit`);
-          if(overExport) reasons.push(`requested export ${req.toFixed(1)} kW exceeds ${exportMaxByPhase} kW standard limit`);
-          out.innerHTML = `This request is above our Model Standing Offer (${reasons.join(" and ")}). You’ll need a Generator Agreement. Continue to start that process.`;
-          out.classList.add('warn'); out.classList.remove('hidden');
-          byId('cta').textContent = "Start negotiated process";
-        } else {
-          out.textContent = "Good news. Your request fits our Model Standing Offer. Use this SPA reference to submit your connection/alteration.";
-          out.classList.add('ok'); out.classList.remove('hidden');
-          byId('cta').textContent = "Get my pre-approval";
-        }
-      }
-    }
-
-    // CTA as a validator trigger
-    byId('cta').addEventListener('click', (e)=>{
-      e.preventDefault();
-      validateExportAndOutcome();
-      // Demo only: no submission
-    });
   </script>
 </body>
 </html>
